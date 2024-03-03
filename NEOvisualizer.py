@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.time import Time
 from mpl_toolkits.mplot3d import axes3d
+import pandas as pd
 
 class NEOvisualizer:
     """
@@ -19,8 +20,8 @@ class NEOvisualizer:
     def __init__(self, obj):
         # self.elem = elem
         self.a = obj.a
-        self.ec = obj.e
-        self.i = obj.i
+        self.e = obj.e
+        self.i = np.radians(obj.i)
         self.om = np.radians(obj.om)
         self.w = np.radians(obj.w)
         self.ma = np.radians(obj.ma)
@@ -43,13 +44,22 @@ class NEOvisualizer:
         timeline = np.linspace(self.epoch, self.time, int(days_since_epoch))
         trueAnom = self.ecc2trueAnom(self.getEccAnom(timeline))
         x,y,z = self.trueAnom2pos(trueAnom)
-        return x[-1], y[-1], z[-1]
+        return x[-1], y[-1], z[-1] #current position
     
-    def plotOrbit():
+    def plotOrbit(self, ax, showNEO=True):
         # plot orbit
+        x,y,z = self.getOrbit()
+        ax.plot(x,y,z, color='#ced3db', linestyle='-')
+        if showNEO:
+            # plot NEO in today's position
+            x,y,z = self.getPositionAt(self.init_time)
+            ax.scatter(x,y,z, color='cyan', s=20)
+            
         
-    def plotNEO():
+    def plotNEO(self, ax):
         # plot NEO in today's position
+        x,y,z = self.getPositionAt(self.init_time)
+        ax.scatter(x,y,z, color='cyan', s=20)
         
             
     def getEccAnom(self, time, tol=0.000000001):
@@ -80,19 +90,31 @@ class NEOvisualizer:
         Z= x*(np.sin(self.i)*np.sin(self.w)) + y*(np.sin(self.i)*np.cos(self.w))
         return X,Y,Z
         
-    
-    def plotEarth(ax, showOrbit=True):
-        # Orbital Elements
-        a = 1.00000011 # AU
-        e = 0.01671022
-        i = np.radians(0.00005)
-        om = np.radians(-11.26064)
-        w = np.radians(102.94719)
-        la = np.radians(100.46435)
-        ma = la - om - w
-        epoch = Time(2451545.0, format='jd', scale='tt').tdb
+
         
+def plotEarth(ax, showOrbit=True):
+    # Orbital Elements
+    a = 1.00000011 # AU
+    e = 0.01671022
+    i = 0
+    om = np.radians(-11.26064)
+    w = np.radians(102.94719)
+    la = np.radians(100.46435)
+    ma = la - om - w
+    epoch = Time(2451545.0, format='jd', scale='tt').tdb
+    n = 0.98560912 # deg/d
+    
+    elems = {'a':a, 'e':e, 'i':i, 'om':om, 'w':w, 'ma':ma, 'epoch':epoch, 'n':n}
+    ser = pd.Series(elems)
+    earth = NEOvisualizer(ser)
+    
+    px,py,pz = earth.getPositionAt(earth.time)
+    ax.scatter(px,py,pz, c='green', s=25)
+        
+    if showOrbit:
         # get orbit
         ecc = np.linspace(-np.pi, np.pi, 500)
-        trueAnom = self.ecc2trueAnom(ecc)
-        
+        trueAnom = earth.ecc2trueAnom(ecc)
+        x,y,z = earth.trueAnom2pos(trueAnom)
+        # plot orbit
+        ax.plot(x,y,z, color='#89ad93', linestyle='-')
